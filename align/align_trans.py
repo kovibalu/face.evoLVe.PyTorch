@@ -5,7 +5,7 @@ from matlab_cp2tform import get_similarity_transform_for_cv2
 
 # reference facial points, a list of coordinates (x,y)
 REFERENCE_FACIAL_POINTS = [        # default reference facial points for crop_size = (112, 112); should adjust REFERENCE_FACIAL_POINTS accordingly for other crop_size
-    [30.29459953,  51.69630051], 
+    [30.29459953,  51.69630051],
     [65.53179932,  51.50139999],
     [48.02519989,  71.73660278],
     [33.54930115,  92.3655014],
@@ -30,9 +30,9 @@ def get_reference_facial_points(output_size = None,
     ----------
         get reference 5 key points according to crop settings:
         0. Set default crop_size:
-            if default_square: 
+            if default_square:
                 crop_size = (112, 112)
-            else: 
+            else:
                 crop_size = (96, 112)
         1. Pad the crop_size by inner_padding_factor in each side;
         2. Resize crop_size into (output_size - outer_padding*2),
@@ -52,7 +52,7 @@ def get_reference_facial_points(output_size = None,
             else:
                 default crop_size = (96, 112);
         !!! make sure, if output_size is not None:
-                (output_size - outer_padding) 
+                (output_size - outer_padding)
                 = some_scale * (default crop_size * (1.0 + inner_padding_factor))
     Returns:
     ----------
@@ -197,6 +197,17 @@ def get_affine_transform_matrix(src_pts, dst_pts):
         ])
 
     return tfm
+
+def crop_face(src_img,bounding_box,crop_size=(96, 112)):
+    """
+    nbendre: only crop , no warp
+    """
+    faces_images = []
+    print(bounding_box)
+    for box in bounding_box:
+        (a1, b1, a2, b2, prob) = box
+        faces_images.append(src_img[b1:b2,a1:a2])
+    return faces_images
 
 
 def warp_and_crop_face(src_img,

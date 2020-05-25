@@ -6,7 +6,22 @@ from box_utils import nms, calibrate_box, get_image_boxes, convert_to_square
 from first_stage import run_first_stage
 
 
-def detect_faces(image, min_face_size = 20.0,
+def load_detect_faces_models():
+    """
+    Loads face detection models, do we don't have to reload them for every image
+    """
+    # LOAD MODELS
+    pnet = PNet()
+    rnet = RNet()
+    onet = ONet()
+    pnet.eval()
+    rnet.eval()
+    onet.eval()
+
+    return pnet, rnet, onet
+
+
+def detect_faces(det_models, image, min_face_size = 20.0,
                  thresholds=[0.6, 0.7, 0.8],
                  nms_thresholds=[0.7, 0.7, 0.7]):
     """
@@ -20,12 +35,7 @@ def detect_faces(image, min_face_size = 20.0,
         two float numpy arrays of shapes [n_boxes, 4] and [n_boxes, 10],
         bounding boxes and facial landmarks.
     """
-
-    # LOAD MODELS
-    pnet = PNet()
-    rnet = RNet()
-    onet = ONet()
-    onet.eval()
+    pnet, rnet, onet = det_models
 
     # BUILD AN IMAGE PYRAMID
     width, height = image.size
@@ -95,7 +105,7 @@ def detect_faces(image, min_face_size = 20.0,
     # STAGE 3
 
     img_boxes = get_image_boxes(bounding_boxes, image, size = 48)
-    if len(img_boxes) == 0: 
+    if len(img_boxes) == 0:
         return [], []
     img_boxes = Variable(torch.FloatTensor(img_boxes), volatile = True)
     output = onet(img_boxes)
