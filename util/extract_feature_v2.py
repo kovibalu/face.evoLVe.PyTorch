@@ -13,7 +13,20 @@ def l2_norm(input, axis = 1):
     return output
 
 
-def extract_feature(img_root, backbone, model_root, device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"), tta = True):
+def get_default_torch_device():
+    return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+def load_face_id_model(backbone, model_root, device=get_default_torch_device()):
+    # load backbone from a checkpoint
+    print("Loading Backbone Checkpoint '{}'".format(model_root))
+    backbone.load_state_dict(torch.load(model_root, map_location=device))
+    backbone.to(device)
+
+    return backbone
+
+
+def extract_feature(img_root, backbone, model_root, device=get_default_torch_device(), tta=True):
     # pre-requisites
     assert(os.path.exists(img_root))
     print('Testing Data Root:', img_root)
@@ -22,7 +35,21 @@ def extract_feature(img_root, backbone, model_root, device = torch.device("cuda:
 
     # load image
     img = cv2.imread(img_root)
+    img = img[...,::-1] # BGR to RGB
+    backbone = load_face_id_model(backbone, model_root)
 
+    extract_feature_for_img(
+        img=img,
+        backbone=backbone,
+        device=device,
+        tta=tta,
+    )
+
+
+def extract_feature_for_img(img, backbone, device=get_default_torch_device(), tta=True):
+    """
+    Expects RGB image!
+    """
     # resize image to [128, 128]
     resized = cv2.resize(img, (128, 128))
 
@@ -32,7 +59,6 @@ def extract_feature(img_root, backbone, model_root, device = torch.device("cuda:
     c=int((128-112)/2) # y start
     d=int((128-112)/2+112) # y end
     ccropped = resized[a:b, c:d] # center crop the image
-    ccropped = ccropped[...,::-1] # BGR to RGB
 
     # flip image horizontally
     flipped = cv2.flip(ccropped, 1)
@@ -51,11 +77,6 @@ def extract_feature(img_root, backbone, model_root, device = torch.device("cuda:
     flipped = torch.from_numpy(flipped)
 
 
-    # load backbone from a checkpoint
-    print("Loading Backbone Checkpoint '{}'".format(model_root))
-    backbone.load_state_dict(torch.load(model_root))
-    backbone.to(device)
-
     # extract features
     backbone.eval() # set to evaluation mode
     with torch.no_grad():
@@ -64,8 +85,8 @@ def extract_feature(img_root, backbone, model_root, device = torch.device("cuda:
             features = l2_norm(emb_batch)
         else:
             features = l2_norm(backbone(ccropped.to(device)).cpu())
-            
-#     np.save("features.npy", features) 
+
+#     np.save("features.npy", features)
 #     features = np.load("features.npy")
 
     return features
