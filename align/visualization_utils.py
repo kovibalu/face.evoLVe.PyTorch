@@ -7,10 +7,9 @@ COLOR_WHEEL = [
     '#FFB9B3',
 ]
 UNKNOWN_COLOR = 'white'
-FONT_PATH = '/usr/share/fonts/dejavu/DejaVuSans.ttf'
 
 
-def show_results(img, bounding_boxes, facial_landmarks=[], names=[]):
+def show_results(img, bounding_boxes, facial_landmarks=[], names=[], font=None):
     """Draw bounding boxes and facial landmarks.
     Arguments:
         img: an instance of PIL.Image.
@@ -21,7 +20,8 @@ def show_results(img, bounding_boxes, facial_landmarks=[], names=[]):
     """
     img_copy = img.copy()
     draw = ImageDraw.Draw(img_copy)
-    font = ImageFont.FreeTypeFont(font=FONT_PATH, size=32)
+    if font is None:
+        font = ImageFont.load_default()
 
     if names:
         assert len(names) == len(bounding_boxes)
