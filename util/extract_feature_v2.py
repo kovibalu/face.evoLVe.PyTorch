@@ -6,6 +6,10 @@ import os
 
 import matplotlib.pyplot as plt
 
+from util.model_irse import IR_50
+
+FACE_ID_MODEL_ROOT = '/home/ec2-user/projects/facelab-data/models/backbone_ir50_ms1m_epoch120.pth'
+
 def l2_norm(input, axis = 1):
     norm = torch.norm(input, 2, axis, True)
     output = torch.div(input, norm)
@@ -17,7 +21,9 @@ def get_default_torch_device():
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def load_face_id_model(backbone, model_root, device=get_default_torch_device()):
+def load_face_id_model(backbone=IR_50([112, 112]), 
+                       model_root=FACE_ID_MODEL_ROOT, 
+                       device=get_default_torch_device()):
     # load backbone from a checkpoint
     print("Loading Backbone Checkpoint '{}'".format(model_root))
     backbone.load_state_dict(torch.load(model_root, map_location=device))
@@ -26,7 +32,11 @@ def load_face_id_model(backbone, model_root, device=get_default_torch_device()):
     return backbone
 
 
-def extract_feature(img_root, backbone, model_root, device=get_default_torch_device(), tta=True):
+def extract_feature(img_root, 
+                    backbone, 
+                    model_root, 
+                    device=get_default_torch_device(), 
+                    tta=True):
     # pre-requisites
     assert(os.path.exists(img_root))
     print('Testing Data Root:', img_root)
@@ -35,7 +45,7 @@ def extract_feature(img_root, backbone, model_root, device=get_default_torch_dev
 
     # load image
     img = cv2.imread(img_root)
-    img = img[...,::-1] # BGR to RGB
+    img = img[..., ::-1] # BGR to RGB
     backbone = load_face_id_model(backbone, model_root)
 
     extract_feature_for_img(
@@ -46,7 +56,10 @@ def extract_feature(img_root, backbone, model_root, device=get_default_torch_dev
     )
 
 
-def extract_feature_for_img(img, backbone, device=get_default_torch_device(), tta=True):
+def extract_feature_for_img(img, 
+                            backbone, 
+                            device=get_default_torch_device(), 
+                            tta=True):
     """
     Expects RGB image!
     """

@@ -1,6 +1,11 @@
 import numpy as np
 import torch
+
+from collections import namedtuple
+
 from torch.autograd import Variable
+
+from align.align_trans import warp_and_crop_face
 from align.get_nets import PNet, RNet, ONet
 from align.box_utils import nms, calibrate_box, get_image_boxes, convert_to_square
 from align.first_stage import run_first_stage
@@ -21,7 +26,9 @@ def load_detect_faces_models():
     return pnet, rnet, onet
 
 
-def detect_faces(det_models, image, min_face_size = 20.0,
+def detect_faces(det_models, 
+                 image, 
+                 min_face_size=20.0,
                  thresholds=[0.6, 0.7, 0.8],
                  nms_thresholds=[0.7, 0.7, 0.7]):
     """
@@ -66,7 +73,7 @@ def detect_faces(det_models, image, min_face_size = 20.0,
 
     # run P-Net on different scales
     for s in scales:
-        boxes = run_first_stage(image, pnet, scale = s, threshold = thresholds[0])
+        boxes = run_first_stage(image, pnet, scale=s, threshold=thresholds[0])
         bounding_boxes.append(boxes)
 
     # collect boxes (and offsets, and scores) from different scales
@@ -85,8 +92,8 @@ def detect_faces(det_models, image, min_face_size = 20.0,
 
     # STAGE 2
 
-    img_boxes = get_image_boxes(bounding_boxes, image, size = 24)
-    img_boxes = Variable(torch.FloatTensor(img_boxes), volatile = True)
+    img_boxes = get_image_boxes(bounding_boxes, image, size=24)
+    img_boxes = Variable(torch.FloatTensor(img_boxes), volatile=True)
     output = rnet(img_boxes)
     offsets = output[0].data.numpy()  # shape [n_boxes, 4]
     probs = output[1].data.numpy()  # shape [n_boxes, 2]
@@ -104,10 +111,10 @@ def detect_faces(det_models, image, min_face_size = 20.0,
 
     # STAGE 3
 
-    img_boxes = get_image_boxes(bounding_boxes, image, size = 48)
+    img_boxes = get_image_boxes(bounding_boxes, image, size=48)
     if len(img_boxes) == 0:
         return [], []
-    img_boxes = Variable(torch.FloatTensor(img_boxes), volatile = True)
+    img_boxes = Variable(torch.FloatTensor(img_boxes), volatile=True)
     output = onet(img_boxes)
     landmarks = output[0].data.numpy()  # shape [n_boxes, 10]
     offsets = output[1].data.numpy()  # shape [n_boxes, 4]
@@ -127,8 +134,51 @@ def detect_faces(det_models, image, min_face_size = 20.0,
     landmarks[:, 5:10] = np.expand_dims(ymin, 1) + np.expand_dims(height, 1)*landmarks[:, 5:10]
 
     bounding_boxes = calibrate_box(bounding_boxes, offsets)
-    keep = nms(bounding_boxes, nms_thresholds[2], mode = 'min')
+    keep = nms(bounding_boxes, nms_thresholds[2], mode='min')
     bounding_boxes = bounding_boxes[keep]
     landmarks = landmarks[keep]
 
     return bounding_boxes, landmarks
+
+
+FaceResult = namedtuple('FaceResult', ['bounding_box', 'landmark', 'warped_face'])
+
+
+def process_faces(img,
+                  det_models,
+                  reference,
+                  crop_size):
+    """
+    Note that img is a PIL Image!
+    """
+    try:  # Handle exception
+        bounding_boxes, landmarks = detect_faces(det_models, img)
+    except Exception as e:
+        print("Image is discarded due to exception:\n{}".format(e))
+        return []
+
+    # If the landmarks cannot be detected, the img will be discarded
+    if len(landmarks) == 0:
+        print("No landmarks detected!")
+        return []
+    else:
+        warped_faces = []
+        for i, landmark in enumerate(landmarks):
+            facial5points = [[landmark[j], landmark[j+5]] for j in range(5)]
+            warped_faces.append(warp_and_crop_face(
+                np.array(img),
+                facial5points,
+                reference,
+                crop_size=(crop_size, crop_size)))
+
+        assert len(warped_faces) == len(bounding_boxes)
+        assert len(warped_faces) == len(landmarks)
+
+        return [
+            FaceResult(
+                bounding_box=bounding_boxes[i],
+                landmark=landmarks[i],
+                warped_face=warped_faces[i],
+            )
+            for i in range(len(warped_faces))
+        ]
