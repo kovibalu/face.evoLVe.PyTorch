@@ -1,16 +1,17 @@
 import argparse
 import glob
 import os
+import time
 
 import cv2
 import numpy as np
 from enum import Enum
 from tqdm import tqdm
-from PIL import Image, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 from align.align_trans import get_reference_facial_points
 from align.detector import load_detect_faces_models, process_faces
-from align.visualization_utils import show_results
+from align.visualization_utils import draw_fps, show_results
 from util.extract_feature_v2 import extract_feature_for_img, load_face_id_model
 
 STREAM_DIR = '/home/ec2-user/projects/facelab-data/stream-data'
@@ -113,6 +114,7 @@ def demo(det_models,
     cap = cv2.VideoCapture(0)
     try:
         while cap.isOpened():
+            start_time = time.time()
             ret, image_np = cap.read()
             if ret and cap.isOpened():
                 # Process frame
@@ -127,6 +129,13 @@ def demo(det_models,
                     crop_size=crop_size,
                     id_npy=id_npy,
                     font=font,
+                )
+                end_time = time.time()
+                fps = 1.0 / (end_time - start_time)
+                draw_fps(
+                    img=viz_img,
+                    font=font,
+                    fps=fps,
                 )
                 # Display the resulting frame
                 viz_img_bgr = np.array(viz_img)[..., ::-1]

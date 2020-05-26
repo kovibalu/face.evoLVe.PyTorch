@@ -50,3 +50,17 @@ def show_results(img, bounding_boxes, facial_landmarks=[], names=[], font=None):
                 ], outline='blue')
 
     return img_copy
+
+
+def draw_fps(img, font, fps):
+    """
+    Draws FPS in right-bottom corner of image, right aligned.
+    """
+    draw = ImageDraw.Draw(img)
+    img_w, img_h = img.size
+    margin = 5
+    fps_text = '{:.2f} FPS'.format(fps)
+    text_w, text_h = draw.textsize(fps_text, font)
+    # Draw in right-bottom corner of image, right aligned.
+    draw.text((img_w - margin - text_w, img_h - margin - text_h), fps_text,
+              font=font)
