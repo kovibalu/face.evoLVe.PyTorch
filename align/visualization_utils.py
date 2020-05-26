@@ -28,17 +28,21 @@ def show_results(img, bounding_boxes, facial_landmarks=[], names=[], font=None):
 
     for b_idx, b in enumerate(bounding_boxes):
         if names:
-            name = names[b_idx]
-            outline_color = COLOR_WHEEL[hash(name) % len(COLOR_WHEEL)]
+            name, aux_name = names[b_idx]
+            if 'unknown' in name.lower():
+                outline_color = UNKNOWN_COLOR
+            else:
+                outline_color = COLOR_WHEEL[hash(name) % len(COLOR_WHEEL)]
+            # Draw name under bounding box.
+            draw.text((b[0], b[3] + 5),
+                      '{} {}'.format(name, aux_name),
+                      font=font)
         else:
-            name = 'unknown'
             outline_color = UNKNOWN_COLOR
 
         draw.rectangle([
             (b[0], b[1]), (b[2], b[3])
         ], outline=outline_color, width=2)
-        # Draw name under bounding box.
-        draw.text((b[0], b[3] + 5), name, font=font)
 
     if facial_landmarks:
         assert len(facial_landmarks) == len(bounding_boxes)

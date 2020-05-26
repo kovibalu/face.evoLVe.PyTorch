@@ -44,7 +44,7 @@ def load_id_files(id_features_dir):
     return id_npy
 
 
-def check_identity(id_npy, query_features):
+def check_identity(id_npy, query_features, max_min_dist=1.0):
     distances_from_id = {}
     for name, id_npy_arr in id_npy.items():
         distances_from_id[name] = []
@@ -52,15 +52,18 @@ def check_identity(id_npy, query_features):
             dist = np.linalg.norm(id_npy_row - query_features)
             distances_from_id[name].append(dist)
 
-    result = np.finfo(float).max
-    name_result = ''
+    min_dist = np.finfo(float).max
+    name_match = ''
     for name, distances in distances_from_id.items():
         avg = np.mean(distances)
-        if avg < result:
-            result = avg
-            name_result = name
+        if avg < min_dist:
+            min_dist = avg
+            name_match = name
 
-    return name_result
+    if min_dist > max_min_dist:
+        name_match = 'Unknown'
+
+    return name_match, min_dist
 
 
 def process_and_viz_img(pil_img,
@@ -84,10 +87,10 @@ def process_and_viz_img(pil_img,
             img=face_result.warped_face,
             backbone=face_id_model)
         # features is tensor, so converting to numpy arr below
-        identity = check_identity(
+        identity, min_dist = check_identity(
             id_npy=id_npy,
             query_features=features.numpy())
-        identity_list.append(identity)
+        identity_list.append((identity, '({:.2f})'.format(min_dist)))
 
     # Visualize the results
     return show_results(
@@ -186,7 +189,7 @@ def main(mode, face_id_model_root, id_features_dir, font_path):
     crop_size = 112
     max_size = 1024
     reference = get_reference_facial_points(default_square=True)
-    font = ImageFont.FreeTypeFont(font=font_path, size=32)
+    font = ImageFont.FreeTypeFont(font=font_path, size=24)
 
     print('Starting image processing...')
     if mode == Mode.DEMO:
