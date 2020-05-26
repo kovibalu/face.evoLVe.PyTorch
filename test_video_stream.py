@@ -2,6 +2,7 @@ import argparse
 import glob
 import os
 import time
+import vlc
 
 import cv2
 import numpy as np
@@ -106,7 +107,7 @@ def process_and_viz_img(pil_img,
         identity_list.append((identity, '({:.2f})'.format(min_dist)))
 
     # Visualize the results
-    return show_results(
+    viz_img = show_results(
         img=pil_img,
         bounding_boxes=[
             fr.bounding_box
@@ -119,6 +120,35 @@ def process_and_viz_img(pil_img,
         names=identity_list,
         font=font)
 
+    if identity_list:
+        names = list(zip(*identity_list))[0]
+    else:
+        names = []
+    return viz_img, names
+
+
+def play_sound_for_name(name):
+    name_to_sound_file = {
+        'neelam': '/Users/bkovacs/Documents/neelam-how-is-it-going.m4a',
+        'kovi': '/Users/bkovacs/Documents/balazs-how-is-it-going.m4a',
+    }
+    name = name.lower()
+    if name not in name_to_sound_file:
+        return
+    player = vlc.MediaPlayer(name_to_sound_file[name])
+    player.play()
+
+
+def play_sound_if_needed(names,
+                         name_to_last_time_seen,
+                         cur_time,
+                         min_elapsed_to_play=3):
+    for name in names:
+        if (name not in name_to_last_time_seen or
+                name_to_last_time_seen[name] + min_elapsed_to_play < cur_time):
+            play_sound_for_name(name)
+        name_to_last_time_seen[name] = cur_time
+
 
 def demo(det_models,
          face_id_model,
@@ -128,6 +158,8 @@ def demo(det_models,
          max_size,
          font):
     cap = cv2.VideoCapture(0)
+    name_to_last_time_seen = {}
+
     try:
         while cap.isOpened():
             start_time = time.time()
@@ -137,7 +169,7 @@ def demo(det_models,
                 # BGR -> RGB
                 pil_img = Image.fromarray(image_np[..., ::-1])
                 pil_img.thumbnail((max_size, max_size))
-                viz_img = process_and_viz_img(
+                viz_img, names = process_and_viz_img(
                     pil_img=pil_img,
                     det_models=det_models,
                     face_id_model=face_id_model,
@@ -146,8 +178,13 @@ def demo(det_models,
                     id_npy=id_npy,
                     font=font,
                 )
-                end_time = time.time()
-                fps = 1.0 / (end_time - start_time)
+                cur_time = time.time()
+                play_sound_if_needed(
+                    names=names,
+                    name_to_last_time_seen=name_to_last_time_seen,
+                    cur_time=cur_time)
+
+                fps = 1.0 / (cur_time - start_time)
                 draw_fps(
                     img=viz_img,
                     font=font,
@@ -182,7 +219,7 @@ def process_files(input_dir,
         image_name = image_names[img_idx]
         pil_img = Image.open(os.path.join(input_dir, image_name))
         pil_img.thumbnail((max_size, max_size))
-        viz_img = process_and_viz_img(
+        viz_img, _ = process_and_viz_img(
             pil_img=pil_img,
             det_models=det_models,
             face_id_model=face_id_model,
