@@ -1,6 +1,7 @@
 import cv2
 import os
 """
+pip install opencv-python==3.4.5.20
 captures 100 images from front facing camera on MAC and saves the images
 """
 def main():
