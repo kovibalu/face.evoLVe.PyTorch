@@ -14,6 +14,7 @@ from align.detector import load_detect_faces_models, process_faces
 from align.visualization_utils import draw_fps, show_results
 from util.extract_feature_v2 import extract_feature_for_img, load_face_id_model
 
+MIN_FACE_PROB = 0.9
 STREAM_DIR = '/home/ec2-user/projects/facelab-data/stream-data'
 RESULT_DIR = '/home/ec2-user/projects/facelab-data/results'
 ID_FEATURES_DIR = '/home/ec2-user/projects/facelab-data/test_Aligned/'
@@ -81,8 +82,20 @@ def process_and_viz_img(pil_img,
         reference=reference,
         crop_size=crop_size)
 
+    # Filter results by detection probability.
+    filtered_face_results = []
+    for face_result in face_results:
+        face_prob = face_result.bounding_box[4]
+        if face_prob < MIN_FACE_PROB:
+            print('Skipping detection with low face probability: {:.2f}'.format(face_prob))
+            continue
+
+        filtered_face_results.append(face_result)
+
+    face_results = filtered_face_results
+
     identity_list = []
-    for fr_idx, face_result in enumerate(face_results):
+    for face_result in face_results:
         features = extract_feature_for_img(
             img=face_result.warped_face,
             backbone=face_id_model)
