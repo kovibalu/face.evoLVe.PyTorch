@@ -1,4 +1,4 @@
-from PIL import ImageDraw
+from PIL import ImageDraw, ImageFont
 
 COLOR_WHEEL = [
     '#ACECD5',
@@ -7,6 +7,7 @@ COLOR_WHEEL = [
     '#FFB9B3',
 ]
 UNKNOWN_COLOR = 'white'
+FONT_PATH = '/usr/share/fonts/dejavu/DejaVuSans.ttf'
 
 
 def show_results(img, bounding_boxes, facial_landmarks=[], names=[]):
@@ -20,6 +21,7 @@ def show_results(img, bounding_boxes, facial_landmarks=[], names=[]):
     """
     img_copy = img.copy()
     draw = ImageDraw.Draw(img_copy)
+    font = ImageFont.FreeTypeFont(font=FONT_PATH, size=32)
 
     if names:
         assert len(names) == len(bounding_boxes)
@@ -34,9 +36,9 @@ def show_results(img, bounding_boxes, facial_landmarks=[], names=[]):
 
         draw.rectangle([
             (b[0], b[1]), (b[2], b[3])
-        ], outline=outline_color)
+        ], outline=outline_color, width=2)
         # Draw name under bounding box.
-        draw.text((b[0], b[3] + 5), name)
+        draw.text((b[0], b[3] + 5), name, font=font)
 
     if facial_landmarks:
         assert len(facial_landmarks) == len(bounding_boxes)
